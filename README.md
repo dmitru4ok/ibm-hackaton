@@ -11,3 +11,4 @@ cd ibm-hackaton
 npm i
 npm run dev
 ```
+3. Go to lo http://localhost:5173/ in your Chrome(preferably) browser
