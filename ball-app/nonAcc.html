@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Static Canvas Size</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff; /* Set background to match scene */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            width: 700px; /* Fixed canvas width */
+            height: 600px; /* Fixed canvas height */
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Set up Three.js scene, camera, and renderer
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff); // Set the scene background color to match the body
+
+        const aspect = 700 / 580;
+        const size = 8.5; // Adjust as needed for the scene size
+
+        const camera = new THREE.OrthographicCamera(
+            size * aspect / -2, size * aspect / 2, // left, right
+            size / 2, size / -2, // top, bottom
+        0.1, 10);
+        camera.position.z = 1;
+
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(700, 600); // Static canvas size
+        document.body.appendChild(renderer.domElement);
+
+// Ball parameters
+const ballRadius = 0.2;
+const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
+const ballMaterial = new THREE.MeshBasicMaterial({ color: 0x0095DD });
+const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+scene.add(ball);
+
+let ballSpeedX = 0.02;
+let ballSpeedY = 0.02;
+let previousDirectionY = Math.sign(ballSpeedY);
+
+const platformWidth = 1.5;
+const platformHeight = 0.2;
+const platformGeometry = new THREE.BoxGeometry(platformWidth, platformHeight, 0.1);
+const platformMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+platform.position.y = -2.5;
+scene.add(platform);
+
+const platformSpeed = 0.5;
+
+// Audio setup
+const listener = new THREE.AudioListener();
+const bounceSound = new THREE.Audio(listener);
+const fallSound = new THREE.Audio(listener);
+const riseSound = new THREE.Audio(listener);
+const platformBump = new THREE.Audio(listener);
+const platformPing = new THREE.Audio(listener);
+
+// Load bounce sound
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load('sounds/wallHit.mp3', function(buffer) {
+    bounceSound.setBuffer(buffer);
+});
+ball.add(bounceSound);
+
+// Load falling sound
+audioLoader.load('sounds/fall.mp3', function(buffer) {
+    fallSound.setBuffer(buffer);
+});
+ball.add(fallSound);
+
+// Load rising sound
+audioLoader.load("sounds/rise.mp3", function(buffer) {
+    riseSound.setBuffer(buffer);
+    
+});
+ball.add(riseSound); // Attach rise sound to the ball
+
+audioLoader.load('sounds/denied.mp3', function(buffer) {
+    platformBump.setBuffer(buffer);
+});
+platform.add(platformBump);
+
+audioLoader.load('sounds/ping.mp3', function(buffer) {
+    platformPing.setBuffer(buffer);
+    // platformPing.setLoop(true); //option 1 => ping the platfom constantly
+    // platformPing.play();
+});
+platform.add(platformPing);
+
+// Function to play the bounce sound
+function playBounceSound() {
+    if (bounceSound.isPlaying) bounceSound.stop();
+    bounceSound.play();
+}
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'ArrowLeft') {
+        if (platform.position.x - platformWidth / 2 - platformSpeed > leftWall.position.x + wallThickness / 2) {
+            platform.position.x -= platformSpeed;
+        } else {
+            if (platformBump.isPlaying) platformBump.stop();
+            platformBump.play();
+        }
+    } else if (event.key === 'ArrowRight') {
+        if (platform.position.x + platformWidth / 2 + platformSpeed < rightWall.position.x - wallThickness / 2) {
+            platform.position.x += platformSpeed;
+        } else {
+            if (platformBump.isPlaying) platformBump.stop();
+            platformBump.play();
+        }
+    }
+});
+
+// Function to update vertical sound based on the ball's movement direction
+function updateVerticalSound() {
+    const currentDirectionY = Math.sign(ballSpeedY);
+    if (currentDirectionY !== previousDirectionY) {
+        if (currentDirectionY > 0) {
+            // Ball is moving up
+            if (fallSound.isPlaying) fallSound.stop();
+            if (!riseSound.isPlaying) riseSound.play();
+        } else {
+            // Ball is moving down
+            if (riseSound.isPlaying) riseSound.stop();
+            if (!fallSound.isPlaying) fallSound.play();
+        }
+        previousDirectionY = currentDirectionY;
+    }
+}
+
+// Wall parameters
+const wallThickness = 0.1;
+const wallHeight = window.innerHeight / 100;
+const wallWidth = window.innerWidth / 100;
+const wallColor = 0x000000;
+
+// Top wall
+const topWall = new THREE.Mesh(
+  new THREE.BoxGeometry(wallWidth, wallThickness, wallThickness),
+  new THREE.MeshBasicMaterial({ color: wallColor })
+);
+topWall.position.set(0, wallHeight / 2, 0);
+scene.add(topWall);
+
+// Left wall
+const leftWall = new THREE.Mesh(
+  new THREE.BoxGeometry(wallThickness, wallHeight, wallThickness),
+  new THREE.MeshBasicMaterial({ color: wallColor })
+);
+leftWall.position.set(-wallWidth / 2, 0, 0);
+scene.add(leftWall);
+
+// Right wall
+const rightWall = new THREE.Mesh(
+  new THREE.BoxGeometry(wallThickness, wallHeight, wallThickness),
+  new THREE.MeshBasicMaterial({ color: wallColor })
+);
+rightWall.position.set(wallWidth / 2, 0, 0);
+scene.add(rightWall);
+
+function updateBallPosition() {
+    ball.position.x += ballSpeedX;
+    ball.position.y += ballSpeedY;
+
+    // Collision detection with the walls
+    if (ball.position.x + ballRadius >= rightWall.position.x - wallThickness / 2 || 
+        ball.position.x - ballRadius <= leftWall.position.x + wallThickness / 2) {
+        ballSpeedX = -ballSpeedX;
+        playBounceSound();
+    }
+
+    if (ball.position.y + ballRadius >= topWall.position.y - wallThickness / 2) {
+        ballSpeedY = -ballSpeedY;
+        playBounceSound();
+    }
+
+    if (ball.position.y - ballRadius <= platform.position.y + platformHeight / 2 && 
+    ball.position.x >= platform.position.x - platformWidth / 2 && 
+    ball.position.x <= platform.position.x + platformWidth / 2) {
+        if (platformPing.isPlaying) platformPing.stop(); // option two => mark hits with ping sound
+        platformPing.play();
+        ballSpeedY = Math.abs(ballSpeedY);
+    }
+
+    if (ball.position.y - ballRadius < platform.position.y) {
+        ball.position.set(0, 0, 0);
+        ballSpeedY = -ballSpeedY;    
+    }
+    updateVerticalSound();
+}
+
+// Animation loop
+function animate() {
+    requestAnimationFrame(animate);
+
+    updateBallPosition();
+    renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>
