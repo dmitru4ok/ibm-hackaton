@@ -3,15 +3,13 @@
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Team OpenDoors@IBM",
+  "license": "",
+  "description": "2D pingpong with 3D sound concept for visually impared using Web Audio API",
   "dependencies": {
-    "http-server": "^14.1.1",
     "three": "^0.170.0"
   },
   "devDependencies": {
